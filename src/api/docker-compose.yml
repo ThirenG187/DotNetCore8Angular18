@@ -1,0 +1,14 @@
+services:
+  sql:
+    container_name: skinetsql
+    image: mcr.microsoft.com/azure-sql-edge
+    environment:
+      ACCEPT_EULA: "1"
+      MSSQL_SA_PASSWORD: "Therong@187Safe"
+    ports:
+      - "1433:1433"
+    volumes:
+      - skinetsqldata:/var/opt/mssql
+
+volumes:
+  skinetsqldata:
