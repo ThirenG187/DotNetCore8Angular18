@@ -1,23 +1,26 @@
 using Microsoft.AspNetCore.Mvc;
 using Skinet.Core.Entities;
 using Skinet.Core.Interfaces;
+using Skinet.Core.Specifications;
 
 namespace Skinet.API.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-public class ProductsController(IProductRepository repo) : ControllerBase
+public class ProductsController(IGenericRepository<Product> repo) : ControllerBase
 {
 	[HttpGet]
 	public async Task<ActionResult<IEnumerable<Product>>> GetProducts(string? brand, string? type, string? sort)
 	{
-		return Ok(await repo.GetProductsAsync(brand, type, sort).ConfigureAwait(false));
+		var spec = new ProductSpecification(brand, type, sort);
+		var products = await repo.ListAsync(spec);
+		return Ok(products);
 	}
 
 	[HttpGet("{id:long}")]
 	public async Task<ActionResult<Product?>> GetProductById(long id)
 	{
-		var product = await repo.GetProductByIdAsync(id);
+		var product = await repo.GetByIdAsync(id);
 
 		if (product == null)
 			return NotFound();
@@ -28,12 +31,12 @@ public class ProductsController(IProductRepository repo) : ControllerBase
 	[HttpPut("{id:long}")]
 	public async Task<ActionResult> UpdateProduct(long id, Product product)
 	{
-		if (!repo.ProductExists(id))
+		if (!repo.Exists(id))
 			return NotFound();
 
-		repo.UpdateProduct(product);
+		repo.Update(product);
 
-		if (await repo.SaveChangesAsync())
+		if (await repo.SaveAllAsync())
 			return NoContent();
 
 		return BadRequest("Problem updating this product");
@@ -42,14 +45,14 @@ public class ProductsController(IProductRepository repo) : ControllerBase
 	[HttpDelete("{id:long}")]
 	public async Task<ActionResult> DeleteProduct(long id)
 	{
-		var product = await repo.GetProductByIdAsync(id);
+		var product = await repo.GetByIdAsync(id);
 
 		if (product == null)
 			return NotFound();
 
-		repo.DeleteProduct(product);
+		repo.Remove(product);
 
-		if (await repo.SaveChangesAsync())
+		if (await repo.SaveAllAsync())
 			return NoContent();
 
 		return BadRequest("Problem deleting this product");
@@ -58,9 +61,9 @@ public class ProductsController(IProductRepository repo) : ControllerBase
 	[HttpPost]
 	public async Task<ActionResult<Product>> CreateProduct(Product product)
 	{
-		repo.AddProduct(product);
+		repo.Add(product);
 
-		if (await repo.SaveChangesAsync())
+		if (await repo.SaveAllAsync())
 			return CreatedAtAction("GetProduct", new { id = product.Id }, product);
 
 		return BadRequest("Problem creating product");
@@ -69,12 +72,14 @@ public class ProductsController(IProductRepository repo) : ControllerBase
 	[HttpGet("brands")]
 	public async Task<ActionResult<IReadOnlyList<string>>> GetBrands()
 	{
-		return Ok(await repo.GetBrandsAsync());
+		var spec = new BrandListSpecification();
+		return Ok(await repo.ListAsync(spec));
 	}
 
 	[HttpGet("types")]
 	public async Task<ActionResult<IReadOnlyList<string>>> GetTypes()
 	{
-		return Ok(await repo.GetTypesAsync());
+		var spec = new TypeListSpecification();
+		return Ok(await repo.ListAsync(spec));
 	}
 }
